@@ -275,6 +275,40 @@ class EssayQuestion:
         )
 
 
+@dataclass
+class MatchingQuestion:
+    """Confirmed live: XML type "matching" (NOT "match" -- see Global Constraints).
+    A flat list of <subquestion>/<answer> text pairs -- correctness is pairing by
+    document order, not by any explicit ID/key field."""
+
+    name: str
+    questiontext: str
+    pairs: list[tuple[str, str]]
+    shuffle_answers: bool = True
+
+    def to_xml(self) -> str:
+        base = _base_question_fields(self.name, self.questiontext)
+        subquestions = []
+        for prompt, answer in self.pairs:
+            subquestions.append(
+                f'  <subquestion format="html">\n'
+                f'{_plain_text(prompt, indent="    ")}\n'
+                f'    <answer>\n'
+                f'{_plain_text(answer, indent="      ")}\n'
+                f'    </answer>\n'
+                f'  </subquestion>'
+            )
+        subquestions_xml = "\n".join(subquestions)
+        return (
+            f'<question type="matching">\n'
+            f'{base}\n'
+            f'  <shuffleanswers>{"true" if self.shuffle_answers else "false"}</shuffleanswers>\n'
+            f'{_combined_feedback()}\n'
+            f'{subquestions_xml}\n'
+            f'</question>'
+        )
+
+
 def write_moodle_xml(questions: list, path: str) -> None:
     """Writes a list of question dataclasses (each exposing .to_xml()) as one Moodle
     XML quiz file -- the whole document-to-quiz output of assessment-item-forge."""

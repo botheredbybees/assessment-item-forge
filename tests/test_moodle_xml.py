@@ -7,6 +7,7 @@ from scripts.moodle_xml import (
     DescriptionQuestion,
     ShortAnswerQuestion,
     EssayQuestion,
+    MatchingQuestion,
     write_moodle_xml,
     _cdata,
     _text_block,
@@ -160,3 +161,22 @@ def test_essay_to_xml_has_required_response_fields():
     assert question.find("responserequired").text == "1"
     assert question.find("responsefieldlines").text == "15"
     assert question.find("attachments").text == "0"
+
+
+def test_matching_to_xml_uses_matching_type_not_match():
+    # Real naming trap confirmed live: the qtype's internal name is "match", but the
+    # XML type attribute is "matching" -- see this plan's Global Constraints.
+    q = MatchingQuestion(
+        name="Match Sample",
+        questiontext="Match the country to its capital.",
+        pairs=[("France", "Paris"), ("Germany", "Berlin"), ("Italy", "Rome")],
+    )
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    question = root.find("question")
+    assert question.get("type") == "matching"
+    subquestions = question.findall("subquestion")
+    assert len(subquestions) == 3
+    assert subquestions[0].find("text").text == "France"
+    assert subquestions[0].find("answer/text").text == "Paris"
+    assert question.find("shuffleanswers").text == "true"
+    assert question.find("correctfeedback") is not None
