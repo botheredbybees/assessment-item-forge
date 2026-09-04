@@ -419,12 +419,12 @@ class MultipleChoiceQuestion:
     def to_xml(self) -> str:
         base = _base_question_fields(self.name, self.questiontext)
         answers = [f'  <answer fraction="100" format="html">\n'
-                   f'{_text_block("text", self.correct, indent="    ")}\n'
+                   f'    <text>{_cdata(self.correct)}</text>\n'
                    f'{_text_block("feedback", self.correct_feedback_text, indent="    ")}\n'
                    f'  </answer>']
         for opt in self.incorrect:
             answers.append(f'  <answer fraction="0" format="html">\n'
-                            f'{_text_block("text", opt, indent="    ")}\n'
+                            f'    <text>{_cdata(opt)}</text>\n'
                             f'{_text_block("feedback", self.incorrect_feedback_text, indent="    ")}\n'
                             f'  </answer>')
         answers_xml = "\n".join(answers)
@@ -467,11 +467,11 @@ class TrueFalseQuestion:
             f'<question type="truefalse">\n'
             f'{base}\n'
             f'  <answer fraction="{true_fraction}" format="html">\n'
-            f'{_text_block("text", "true", indent="    ")}\n'
+            f'    <text>{_cdata("true")}</text>\n'
             f'{_text_block("feedback", true_feedback, indent="    ")}\n'
             f'  </answer>\n'
             f'  <answer fraction="{false_fraction}" format="html">\n'
-            f'{_text_block("text", "false", indent="    ")}\n'
+            f'    <text>{_cdata("false")}</text>\n'
             f'{_text_block("feedback", false_feedback, indent="    ")}\n'
             f'  </answer>\n'
             f'</question>'
@@ -599,7 +599,7 @@ class NumericalQuestion:
             f'<question type="numerical">\n'
             f'{base}\n'
             f'  <answer fraction="100" format="html">\n'
-            f'{_text_block("text", str(self.answer), indent="    ")}\n'
+            f'    <text>{_cdata(str(self.answer))}</text>\n'
             f'{_text_block("feedback", self.correct_feedback, indent="    ")}\n'
             f'    <tolerance>{self.tolerance}</tolerance>\n'
             f'  </answer>\n'
@@ -649,7 +649,7 @@ class ShortAnswerQuestion:
             f'{base}\n'
             f'  <usecase>{"1" if self.use_case else "0"}</usecase>\n'
             f'  <answer fraction="100" format="html">\n'
-            f'{_text_block("text", self.answer, indent="    ")}\n'
+            f'    <text>{_cdata(self.answer)}</text>\n'
             f'{_text_block("feedback", self.correct_feedback, indent="    ")}\n'
             f'  </answer>\n'
             f'</question>'
@@ -771,9 +771,9 @@ class MatchingQuestion:
         for prompt, answer in self.pairs:
             subquestions.append(
                 f'  <subquestion format="html">\n'
-                f'{_text_block("text", prompt, indent="    ")}\n'
+                f'    <text>{_cdata(prompt)}</text>\n'
                 f'    <answer>\n'
-                f'{_text_block("text", answer, indent="      ")}\n'
+                f'      <text>{_cdata(answer)}</text>\n'
                 f'    </answer>\n'
                 f'  </subquestion>'
             )
@@ -1073,7 +1073,7 @@ class DragIntoTextQuestion:
         for text, group in self.drag_items:
             dragboxes.append(
                 f'  <dragbox>\n'
-                f'{_text_block("text", text, indent="    ")}\n'
+                f'    <text>{_cdata(text)}</text>\n'
                 f'    <group>{group}</group>\n'
                 f'  </dragbox>'
             )
@@ -1112,7 +1112,7 @@ class DragOntoImageQuestion:
             drags_xml.append(
                 f'  <drag>\n'
                 f'    <no>{i}</no>\n'
-                f'{_text_block("text", text, indent="    ")}\n'
+                f'    <text>{_cdata(text)}</text>\n'
                 f'    <draggroup>{draggroup}</draggroup>\n'
                 f'  </drag>'
             )
@@ -1120,7 +1120,7 @@ class DragOntoImageQuestion:
         for drag_no, xleft, ytop in self.drops:
             drops_xml.append(
                 f'  <drop>\n'
-                f'{_text_block("text", "", indent="    ")}\n'
+                f'    <text></text>\n'
                 f'    <no>{drag_no}</no>\n'
                 f'    <choice>{drag_no}</choice>\n'
                 f'    <xleft>{xleft}</xleft>\n'
@@ -1162,7 +1162,7 @@ class DragMarkersQuestion:
             drags_xml.append(
                 f'  <drag>\n'
                 f'    <no>{i}</no>\n'
-                f'{_text_block("text", text, indent="    ")}\n'
+                f'    <text>{_cdata(text)}</text>\n'
                 f'    <noofdrags>1</noofdrags>\n'
                 f'  </drag>'
             )
@@ -1295,7 +1295,7 @@ class SelectMissingWordsQuestion:
     def to_xml(self) -> str:
         base = _base_question_fields(self.name, self.questiontext_with_blanks)
         options_xml = "\n".join(
-            f'  <selectoption>\n{_text_block("text", text, indent="    ")}\n    <group>{group}</group>\n  </selectoption>'
+            f'  <selectoption>\n    <text>{_cdata(text)}</text>\n    <group>{group}</group>\n  </selectoption>'
             for text, group in self.options
         )
         return (
@@ -1330,7 +1330,7 @@ class OrderingQuestion:
     def to_xml(self) -> str:
         base = _base_question_fields(self.name, self.questiontext)
         answers_xml = "\n".join(
-            f'  <answer fraction="{i}.0000000" format="html">\n{_text_block("text", item, indent="    ")}\n  </answer>'
+            f'  <answer fraction="{i}.0000000" format="html">\n    <text>{_cdata(item)}</text>\n  </answer>'
             for i, item in enumerate(self.items_in_order, start=1)
         )
         return (
@@ -1434,15 +1434,19 @@ class CalculatedWildcard:
     decimals: int = 0
 
     def to_xml(self) -> str:
+        # Note: status/name/distribution/minimum/maximum/decimals carry NO format
+        # attribute in the verified schema (unlike questiontext/feedback-family
+        # fields) -- each is a plain <tag><text>value</text></tag>, so _text_block
+        # (which always adds format="...") is not used here.
         return (
             f'    <dataset_definition>\n'
-            f'{_text_block("status", "private", indent="      ")}\n'
-            f'{_text_block("name", self.name, indent="      ")}\n'
+            f'      <status>\n        <text>{_cdata("private")}</text>\n      </status>\n'
+            f'      <name>\n        <text>{_cdata(self.name)}</text>\n      </name>\n'
             f'      <type>calculated</type>\n'
-            f'{_text_block("distribution", "uniform", indent="      ")}\n'
-            f'{_text_block("minimum", str(self.minimum), indent="      ")}\n'
-            f'{_text_block("maximum", str(self.maximum), indent="      ")}\n'
-            f'{_text_block("decimals", str(self.decimals), indent="      ")}\n'
+            f'      <distribution>\n        <text>{_cdata("uniform")}</text>\n      </distribution>\n'
+            f'      <minimum>\n        <text>{_cdata(str(self.minimum))}</text>\n      </minimum>\n'
+            f'      <maximum>\n        <text>{_cdata(str(self.maximum))}</text>\n      </maximum>\n'
+            f'      <decimals>\n        <text>{_cdata(str(self.decimals))}</text>\n      </decimals>\n'
             f'      <itemcount>1</itemcount>\n'
             f'      <dataset_items>\n'
             f'        <dataset_item>\n'
@@ -1481,7 +1485,7 @@ class CalculatedQuestion:
             f'  <shuffleanswers>0</shuffleanswers>\n'
             f'{_combined_feedback()}\n'
             f'  <answer fraction="100" format="html">\n'
-            f'{_text_block("text", self.formula, indent="    ")}\n'
+            f'    <text>{_cdata(self.formula)}</text>\n'
             f'    <tolerance>{self.tolerance}</tolerance>\n'
             f'    <tolerancetype>1</tolerancetype>\n'
             f'    <correctanswerformat>1</correctanswerformat>\n'
