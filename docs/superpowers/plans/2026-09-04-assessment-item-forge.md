@@ -223,12 +223,10 @@ def test_cdata_wraps_text():
 
 def test_cdata_escapes_literal_cdata_close_sequence():
     # A literal "]]>" inside the text would prematurely close the CDATA section if
-    # not handled -- split it into two adjacent CDATA sections instead.
+    # not handled -- split it into two adjacent CDATA sections instead, the standard
+    # escape for this case.
     result = _cdata("before]]>after")
-    assert result == "before]]]]><![CDATA[>after".join(["<![CDATA[", "]]>"])
-    # Simpler equivalent check: the raw "]]>" must not appear unescaped mid-content.
-    inner = result[len("<![CDATA["):-len("]]>")]
-    assert "]]>" not in inner or inner.count("]]>") == 0
+    assert result == "<![CDATA[before]]]]><![CDATA[>after]]>"
 
 
 def test_text_block_shape():
