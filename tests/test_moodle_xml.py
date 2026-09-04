@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+import pytest
 
 from scripts.moodle_xml import (
     MultipleChoiceQuestion,
@@ -8,6 +9,8 @@ from scripts.moodle_xml import (
     ShortAnswerQuestion,
     EssayQuestion,
     MatchingQuestion,
+    ClozeBlank,
+    ClozeQuestion,
     write_moodle_xml,
     _cdata,
     _text_block,
@@ -180,3 +183,52 @@ def test_matching_to_xml_uses_matching_type_not_match():
     assert subquestions[0].find("answer/text").text == "Paris"
     assert question.find("shuffleanswers").text == "true"
     assert question.find("correctfeedback") is not None
+
+
+def test_cloze_blank_shortanswer_embedded_text():
+    blank = ClozeBlank(kind="SHORTANSWER", correct="Paris")
+    assert blank.to_embedded_text() == "{1:SHORTANSWER:=Paris}"
+
+
+def test_cloze_blank_numerical_embedded_text_includes_tolerance_as_wrong_entry():
+    # Moodle's Cloze NUMERICAL sub-answer syntax is {weight:NUMERICAL:=answer:tolerance}
+    blank = ClozeBlank(kind="NUMERICAL", correct="2100000:100000")
+    assert blank.to_embedded_text() == "{1:NUMERICAL:=2100000:100000}"
+
+
+def test_cloze_blank_multichoice_embedded_text_includes_distractors():
+    blank = ClozeBlank(kind="MULTICHOICE", correct="Eiffel Tower", wrong=["Big Ben", "Colosseum"])
+    assert blank.to_embedded_text() == "{1:MULTICHOICE:=Eiffel Tower~Big Ben~Colosseum}"
+
+
+def test_cloze_question_to_xml_uses_cloze_type_not_multianswer():
+    # Real naming trap confirmed live: the qtype's internal name is "multianswer", but
+    # the XML type attribute is "cloze" -- see this plan's Global Constraints.
+    q = ClozeQuestion(
+        name="Capital of France",
+        template="The capital of France is {}. It has a population of about {} people, and its most famous landmark is the {}.",
+        blanks=[
+            ClozeBlank(kind="SHORTANSWER", correct="Paris"),
+            ClozeBlank(kind="NUMERICAL", correct="2100000:100000"),
+            ClozeBlank(kind="MULTICHOICE", correct="Eiffel Tower", wrong=["Big Ben", "Colosseum"]),
+        ],
+    )
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    question = root.find("question")
+    assert question.get("type") == "cloze"
+    questiontext = question.find("questiontext/text").text
+    assert "{1:SHORTANSWER:=Paris}" in questiontext
+    assert "{1:NUMERICAL:=2100000:100000}" in questiontext
+    assert "{1:MULTICHOICE:=Eiffel Tower~Big Ben~Colosseum}" in questiontext
+    # Cloze's complexity lives entirely in the embedded text -- no <answer> elements
+    # at the parent-question level, confirmed live.
+    assert question.findall("answer") == []
+
+
+def test_cloze_question_requires_matching_blank_and_placeholder_count():
+    with pytest.raises(ValueError, match="placeholder"):
+        ClozeQuestion(
+            name="Q",
+            template="Only one blank here: {}.",
+            blanks=[ClozeBlank(kind="SHORTANSWER", correct="A"), ClozeBlank(kind="SHORTANSWER", correct="B")],
+        )

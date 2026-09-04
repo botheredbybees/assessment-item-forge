@@ -309,6 +309,57 @@ class MatchingQuestion:
         )
 
 
+@dataclass
+class ClozeBlank:
+    """One embedded sub-answer inside a Cloze (multianswer) question's questiontext.
+
+    Confirmed live: a Cloze question's entire complexity lives in this embedded
+    mini-language string sitting inside <questiontext><text> -- there is no separate
+    child-question or per-answer XML structure at the parent-question level at all.
+    """
+
+    kind: str  # "SHORTANSWER", "NUMERICAL", or "MULTICHOICE"
+    correct: str
+    wrong: list[str] = field(default_factory=list)
+    weight: int = 1
+
+    def to_embedded_text(self) -> str:
+        parts = [self.correct] + list(self.wrong)
+        joined = "~".join(parts) if self.kind == "MULTICHOICE" else self.correct
+        return f"{{{self.weight}:{self.kind}:={joined}}}"
+
+
+@dataclass
+class ClozeQuestion:
+    """Confirmed live: XML type "cloze" (NOT "multianswer" -- see Global Constraints).
+    `template` uses `{}` as a placeholder marker (Python str.format-style, but filled
+    manually here rather than via .format() to avoid clashing with any literal `{`/`}`
+    the surrounding prose might contain) -- filled in order from `blanks`.
+    """
+
+    name: str
+    template: str
+    blanks: list
+
+    def __post_init__(self):
+        placeholder_count = self.template.count("{}")
+        if placeholder_count != len(self.blanks):
+            raise ValueError(
+                f"template has {placeholder_count} placeholder(s) but {len(self.blanks)} "
+                f"blank(s) were given -- these must match"
+            )
+
+    def _rendered_text(self) -> str:
+        text = self.template
+        for blank in self.blanks:
+            text = text.replace("{}", blank.to_embedded_text(), 1)
+        return text
+
+    def to_xml(self) -> str:
+        base = _base_question_fields(self.name, self._rendered_text())
+        return f'<question type="cloze">\n{base}\n</question>'
+
+
 def write_moodle_xml(questions: list, path: str) -> None:
     """Writes a list of question dataclasses (each exposing .to_xml()) as one Moodle
     XML quiz file -- the whole document-to-quiz output of assessment-item-forge."""
