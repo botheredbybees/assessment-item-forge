@@ -6,16 +6,21 @@
 question type — starting from the pedagogical judgment of *which type actually tests the target
 understanding*, not just from the mechanics of generating valid Moodle content.
 
-**Architecture:** One Claude Skill (`SKILL.md`) drives an authoring workflow: given source
-material and a learning goal, it reasons about which question type(s) best test that
-understanding (drawing on the evidence-grounded rubric in `references/pedagogy.md`), drafts the
-question(s) via a small set of Python dataclasses (`scripts/moodle_xml.py`, one class per question
-type), enforces mechanical correctness and the answer-length-distribution rule as *code*
+**Architecture:** One Claude Skill (`SKILL.md`) drives an authoring workflow whose primary unit of
+work is **a whole source document in, a whole quiz out** — not one question at a time. Given a
+document (a module's lesson text, a wiki page, a Confluence page's content), the skill identifies
+the distinct concepts/passages within it worth testing, decides — for the document as a whole, not
+independently per fact — a *considered mixture* of question types across those concepts (drawing
+on the evidence-grounded rubric in `references/pedagogy.md`, which explicitly treats "does this
+quiz's type mixture actually fit what the content offers" as part of the judgment, not just
+"which single type fits this one fact"), drafts each question via a small set of Python dataclasses
+(`scripts/moodle_xml.py`, one class per question type), enforces mechanical correctness and the
+answer-length-distribution rule as *code* across the resulting question set
 (`scripts/length_distribution.py`, `scripts/item_sanity_check.py`) rather than as prose the model
-must remember mid-draft, and emits a single Moodle XML file ready for import via Moodle's own
-`qformat_xml` question-bank importer. Moodle XML is used uniformly for every question type — GIFT
-is not used at all, since XML is a strict superset of GIFT's capability (every question type,
-richer feedback/formatting, no backslash-escaping) with no corresponding downside for an
+must remember mid-draft, and emits a single Moodle XML file — the whole quiz, ready for import via
+Moodle's own `qformat_xml` question-bank importer. Moodle XML is used uniformly for every question
+type — GIFT is not used at all, since XML is a strict superset of GIFT's capability (every question
+type, richer feedback/formatting, no backslash-escaping) with no corresponding downside for an
 authoring tool that generates its own source rather than requiring hand-typed syntax.
 
 ## Background
@@ -60,18 +65,28 @@ why that distinction matters here specifically.
 
 ## Goals
 
-1. Author Moodle quiz questions across every practical question type (list below), each backed by
-   a clear statement of *what kind of understanding it tests* and *when it's the right choice* —
-   not just correct XML syntax.
-2. Make the answer-length-distribution rule, and other mechanically-checkable correctness
+1. **Take a whole source document as input and produce a whole quiz as output** — a module's
+   lesson text, a wiki page, a Confluence page's exported content — not a tool that authors one
+   question at a time on request. The skill identifies what in the document is worth testing and
+   drafts a complete question set from it in one pass.
+2. **Choose a considered *mixture* of question types across that document**, not just the right
+   type for each fact in isolation. A document with a sequential procedure, a passage whose exact
+   wording matters, and several factual claims should produce a quiz reflecting that variety —
+   Ordering for the procedure, Cloze for the precise wording, Multiple Choice/True-False for the
+   facts — rather than defaulting every item to the same type because it's the path of least
+   resistance. Judging the *mixture* is itself a pedagogical decision, not a mechanical afterthought
+   once each item's type is picked independently.
+3. Author across every practical question type (list below), each backed by a clear statement of
+   *what kind of understanding it tests* and *when it's the right choice* — not just correct XML
+   syntax.
+4. Make the answer-length-distribution rule, and other mechanically-checkable correctness
    properties, enforced by code that runs before anything is considered "drafted" — never rules
    that exist only as instructions a model must remember while writing prose.
-3. Ship as a real, usable tool from day one (an XML file the skill produces, ready for Moodle's
-   own XML question import), not guidance-only — validated by actually authoring real
-   Cloze/Ordering/Calculated questions for 1–2 modules of the Nuyina Data Officer Training LMS
-   once built (tracked separately — see "Follow-on work" below; not part of this project's own
-   scope).
-4. Stay self-contained and portable: no dependency on the Nuyina workspace, no assumption about
+5. Ship as a real, usable tool from day one (an XML file the skill produces, ready for Moodle's
+   own XML question import), not guidance-only — validated by actually authoring real quizzes for
+   1–2 modules of the Nuyina Data Officer Training LMS once built (tracked separately — see
+   "Follow-on work" below; not part of this project's own scope).
+6. Stay self-contained and portable: no dependency on the Nuyina workspace, no assumption about
    which Moodle instance it's pointed at, nothing that couldn't be handed to an unrelated educator
    as-is.
 
@@ -109,6 +124,15 @@ Select Missing Words, Ordering, Calculated.
 **Explicitly deferred, not excluded:** Calculated Multi, Calculated Simple, Random Short-Answer
 Matching.
 
+## Input
+
+A whole document's worth of content, handed to the skill as plain text (a pasted lesson, a wiki
+page body, an exported Confluence page) — the skill does not fetch content itself (no Confluence/
+wiki API integration in scope; whatever tool session invokes it is responsible for gathering the
+source text first, matching how the Nuyina LMS's own `gather_module_sources.py` already separates
+"collect the source material" from "draft from it"). Output is one Moodle XML file: a complete
+quiz, not a single question.
+
 ## The pedagogical judgment layer
 
 `references/pedagogy.md` holds the evidence-grounded rubric the skill consults before drafting
@@ -116,7 +140,10 @@ anything — not a lookup table mapping content-shape to question-type mechanica
 reasoning framework adapted from (with full attribution — see Licensing) the matching logic in
 `education-agent-skills`' `formative-assessment-technique-selector`: what is actually being
 checked (recall, comprehension, procedural construction, precise recall of exact wording), and
-what response format that requires. Concretely, this is where the skill encodes findings like:
+what response format that requires. This operates at two levels, not one: per-passage (which type
+fits *this* concept) and whole-document (does the resulting quiz's type mixture actually reflect
+what the document offered, or has every item defaulted to the same type regardless of what each
+passage structurally called for). Concretely, this is where the skill encodes findings like:
 
 - Multiple Choice / True-False test *recognition* — can the trainee identify the correct answer
   among given options — and are vulnerable to construct-irrelevant variance (length, extremity,
