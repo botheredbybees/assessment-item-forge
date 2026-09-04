@@ -4,7 +4,8 @@ A Claude Skill that takes a whole source document — a lesson, a wiki page, a C
 content — and produces a whole Moodle quiz: a deliberate mixture of question types chosen by
 pedagogical judgment, not just the mechanically-easiest type for each fact.
 
-See `docs/superpowers/specs/2026-09-04-assessment-item-forge-design.md` for the full design.
+See `docs/superpowers/specs/2026-09-04-assessment-item-forge-design.md` for the full design, or
+`howto.md` if you just want to install and use it.
 
 ## What it does
 

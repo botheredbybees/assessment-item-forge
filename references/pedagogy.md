@@ -34,6 +34,55 @@ wording matters, and several standalone facts should produce a quiz using more t
 - Bonner, S. M. (2009). Investigating teacher use of practice tests for formative purposes.
   *Journal of MultiDisciplinary Evaluation*, 6(12), 125–128. Formative, retakeable practice with
   real feedback shows learning gains sustained well beyond the assessment itself.
+- Eysenck, M. W., & Keane, M. T. (2015). *Cognitive Psychology: A Student's Handbook*. Taylor &
+  Francis Group. The testing effect and retrieval practice: the act of recalling information,
+  not just re-reading it, is what strengthens the memory trace. This is the memory-science
+  mechanism underneath Bonner's empirical finding above — it's *why* a retakeable quiz outperforms
+  passive review, not just evidence that it does.
+- Krieglstein, F., Beege, M., Rey, G. D., Ginns, P., Krell, M., & Schneider, S. (2022). A
+  systematic meta-analysis of the reliability and validity of subjective cognitive load
+  questionnaires in experimental multimedia learning research. *Educational Psychology Review*,
+  34(4), 2485–2541. Cognitive Load Theory's three-part split — intrinsic (the material's own
+  complexity), extraneous (complexity added by how it's presented), germane (effort spent
+  building understanding) — is distinct from construct-irrelevant variance above but related: a
+  cluttered stem or an option padded with irrelevant detail adds extraneous load on top of
+  whatever construct-irrelevant cue it introduces. Keep stems and options as plain as the content
+  allows; every word that isn't carrying the question's actual content is a tax on both.
+- Remesal, A., Corral, M. J., García-Mínguez, P., Domínguez, J., SanMiguel, I., Macsotay, T., &
+  Suárez, E. (2023). Certainty-based self-assessment: a chance for enhanced learning engagement in
+  higher education. In D. Guralnick (Ed.), *Creative Approaches to Technology-Enhanced Learning
+  for the Workplace and Higher Education* (pp. 689–696). Springer Nature Switzerland AG.
+  Certainty-Based Marking pairs an answer with a confidence rating so a confident-but-wrong answer
+  is scored differently from an unsure-but-wrong one — the two are not the same failure. This
+  skill doesn't implement CBM mechanically (Moodle's native question types don't support a
+  confidence sub-response), but it motivates the distractor-design guidance immediately below:
+  a distractor a confident respondent would pick is a more serious design flaw than one nobody
+  would ever choose.
+- Zascerinska, J., Scheepers, J., & Kühn, M. (2024). Multi-Sided Evaluation of Needs of TVET
+  Students in Problem-Solving Skills in South Africa. In M. Gessler et al. (Eds.), *Expanding
+  Horizons, Internationale Berufsbildungsforschung* (pp. 119–126). Springer Fachmedien Wiesbaden.
+  A concrete technique for scenario-style questions: name the specific problem-solving skill an
+  item is meant to test *before* drafting it, then write the question to test that named skill —
+  rather than writing a plausible-sounding scenario first and only discovering afterward what it
+  actually measures.
+
+## Scenario and troubleshooting-style questions
+
+A question that drops the respondent into a situation ("the sensor is reading zero", "the build
+failed with this error") is testing diagnostic judgment, not fact recall — and it needs different
+distractor design from a standalone-fact Multiple Choice item.
+
+- **Name the skill before drafting the question.** Per Zascerinska et al. (2024) above: decide
+  what specific diagnostic or procedural judgment the item tests, in one sentence, before writing
+  the scenario. If that sentence is hard to write, the scenario probably isn't ready to become a
+  question yet.
+- **Distractors should be plausible misdiagnoses, not filler.** A distractor nobody would pick
+  under real conditions tests nothing — it just shortens the effective option count. The
+  distractor that matters is the one a competent-but-hasty respondent would actually reach for:
+  the adjacent wrong cause, the step that looks right but is one stage too early or too late, the
+  answer that would have been correct under slightly different circumstances than the ones stated.
+  A confidently-wrong diagnosis is the real-world failure mode worth testing for — see the
+  certainty-based-marking citation above.
 
 ## Type-selection rubric
 
