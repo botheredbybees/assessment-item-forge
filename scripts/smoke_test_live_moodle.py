@@ -6,10 +6,10 @@ for importing it into a real Moodle instance by hand.
 Not part of the automated test suite -- this project has no live Moodle instance of
 its own. Run this against any Moodle 4.x/5.x instance you have access to (e.g. the
 Nuyina Data Officer Training LMS's dev-env Moodle) via Site administration ->
-Question bank -> Import -> Moodle XML format, then confirm all 13 questions import
-without error and preview correctly, especially the Calculated question (see this
-plan's Global Constraints -- its schema was derived from source reading, not a live
-round-trip, unlike the other 12 types).
+Question bank -> Import -> Moodle XML format, then confirm all of the questions
+below import without error and preview correctly, especially the Calculated
+question (see this plan's Global Constraints -- its schema was derived from source
+reading, not a live round-trip, unlike most of the other types).
 """
 import sys
 import os
@@ -83,5 +83,5 @@ output_path = "smoke_test_output.xml"
 write_moodle_xml(questions, output_path)
 print(f"Wrote {len(questions)} questions to {output_path}")
 print("Import this file into a real Moodle instance: Site administration -> Question bank ->")
-print("Import -> Moodle XML format -> upload this file. Confirm all 13 questions import with")
-print("no errors and preview correctly in the question bank, especially the Calculated one.")
+print(f"Import -> Moodle XML format -> upload this file. Confirm all {len(questions)} questions import")
+print("with no errors and preview correctly in the question bank, especially the Calculated one.")

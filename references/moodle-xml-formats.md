@@ -1,12 +1,29 @@
 # Moodle XML format reference
 
-Every template below was verified against a real, running Moodle 5.0.2 instance
-(`bitnamilegacy/moodle:5.0.2`) during this project's design — either a live create-then-export
-round-trip via `qformat_xml`, or Moodle's own shipped test fixtures / source code where a live
-round-trip wasn't practical (Calculated; drag-and-drop onto image/markers, which need a real
-background image binary to round-trip meaningfully). See `scripts/moodle_xml.py` for the
-implementation — this document is a human-readable reference to the same facts, not a
-duplicate source of truth to keep in sync by hand.
+Every template below was checked against Moodle 5.0.2 during this project's design, but not all
+to the same degree of confidence -- there are three distinct verification tiers, and it matters
+which one a given type falls into:
+
+- **(a) Live round-trip verified**: created via a real, running Moodle 5.0.2 instance
+  (`bitnamilegacy/moodle:5.0.2`), then exported back out via `qformat_xml` and compared. The
+  strongest tier -- confirms the whole pipeline actually works, not just that the XML shape looks
+  right on paper. Applies to: Multiple Choice, True/False, Numerical, Description, Short Answer,
+  Essay, Matching, Cloze.
+- **(b) Verified against Moodle's own shipped test fixtures**: no live round-trip, but checked
+  against a real `.moodle.xml` fixture file shipped in Moodle's own source tree
+  (`question/type/<qtype>/tests/fixtures/`). Applies to: Select Missing Words (`gapselect`),
+  Ordering.
+- **(c) Derived from reading Moodle source code only, not independently verified against a
+  running instance**: the XML shape comes from reading the qtype's own `export_to_xml`/
+  `qformat_xml` implementation, with no live round-trip and no shipped fixture used. The weakest
+  tier -- correct only insofar as the source reading was accurate. Applies to: Drag-and-drop into
+  Text (`ddwtos`), Drag-and-drop onto Image (`ddimageortext`), Drag-and-drop Markers (`ddmarker`)
+  — a live round-trip wasn't practical for these three since they need a real background image
+  binary to round-trip meaningfully — and Calculated (`calculated`), for which no shipped fixture
+  existed either.
+
+See `scripts/moodle_xml.py` for the implementation — this document is a human-readable reference
+to the same facts, not a duplicate source of truth to keep in sync by hand.
 
 ## Fields present on every question type
 

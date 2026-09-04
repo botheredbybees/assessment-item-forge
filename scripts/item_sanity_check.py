@@ -2,8 +2,9 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 
-_PLACEHOLDER_MARKERS = ["TODO", "TBD", "[fill in]", "[FIXME]", "FIXME", "<PLACEHOLDER>", "XXX"]
+_PLACEHOLDER_MARKERS = ["TODO", "TBD", "[fill in]", "FIXME", "<PLACEHOLDER>", "XXX"]
 _CLOZE_BLANK_PATTERN = re.compile(r"\{\d+:(SHORTANSWER|NUMERICAL|MULTICHOICE)[A-Z_]*:")
+_FILE_PAYLOAD = re.compile(r"(<file\b[^>]*>).*?(</file>)", re.DOTALL)
 
 
 def check_well_formed_xml(xml_text: str) -> list:
@@ -12,6 +13,15 @@ def check_well_formed_xml(xml_text: str) -> list:
     except ET.ParseError as e:
         return [f"XML is not well-formed: {e}"]
     return []
+
+
+def _strip_file_payloads(xml_text: str) -> str:
+    """Base64 image content inside <file> elements can randomly contain
+    placeholder-marker substrings (TBD, XXX, FIXME) by pure chance -- strip
+    it before scanning for placeholders, since a false positive here has no
+    fixable "problem" to act on. Well-formedness is still checked against
+    the original, untouched text."""
+    return _FILE_PAYLOAD.sub(r"\1\2", xml_text)
 
 
 def check_no_placeholders(text: str) -> list:
@@ -55,10 +65,11 @@ def main():
     with open(path, encoding="utf-8") as f:
         xml_text = f.read()
 
-    problems = check_well_formed_xml(xml_text)
-    problems += [f"{path}: {p}" for p in check_no_placeholders(xml_text)]
+    well_formed_problems = check_well_formed_xml(xml_text)
+    problems = list(well_formed_problems)
+    problems += [f"{path}: {p}" for p in check_no_placeholders(_strip_file_payloads(xml_text))]
 
-    if not problems:
+    if not well_formed_problems:
         root = ET.fromstring(xml_text)
         for question in root.findall("question"):
             qtype = question.get("type")

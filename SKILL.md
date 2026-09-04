@@ -29,7 +29,14 @@ because Multiple Choice is the easiest type to default to.
 
 4. **Draft each question using the dataclasses in `scripts/moodle_xml.py`.** See
    `references/moodle-xml-formats.md` for what each type actually requires. Never hand-write
-   Moodle XML directly — always go through a dataclass's `.to_xml()`.
+   Moodle XML directly — always go through a dataclass's `.to_xml()`. `scripts/smoke_test_live_moodle.py`
+   is a worked example importing and constructing one instance of every supported question type
+   with correct constructor arguments — use it as a reference if a dataclass's arguments aren't
+   obvious from its definition alone. If this skill is installed somewhere other than this repo's
+   own root (see the note under step 6), you'll need
+   `sys.path.insert(0, "<path-to-this-skill>")` before `from scripts.moodle_xml import ...` will
+   resolve — `<path-to-this-skill>` means wherever this skill's own files actually live once
+   installed (its own directory), which isn't knowable as a literal path in this document.
 
 5. **Run the length-distribution check** (`scripts/length_distribution.py`'s `check_distribution()`)
    against every Multiple-Choice-family question drafted so far, once there are at least 5 of
@@ -38,10 +45,14 @@ because Multiple Choice is the easiest type to default to.
 
 6. **Run the structural sanity check**:
    ```bash
-   python3 -m scripts.item_sanity_check <quiz.xml>
+   python3 <path-to-this-skill>/scripts/item_sanity_check.py <quiz.xml>
    ```
-   Fix any reported problem and re-run until it prints `OK`. Do not consider a quiz finished while
-   this reports problems.
+   `<path-to-this-skill>` means wherever this skill's own files actually live once installed (its
+   own directory) — a real Claude Skill is invoked from an arbitrary project directory, not this
+   repo's own root, so a plain `python3 -m scripts.item_sanity_check` (which only resolves the
+   `scripts` module relative to the current working directory) will fail with
+   `ModuleNotFoundError` unless cwd happens to be this repo's root. Fix any reported problem and
+   re-run until it prints `OK`. Do not consider a quiz finished while this reports problems.
 
 7. **Assemble and write the final file** via `scripts/moodle_xml.py`'s `write_moodle_xml()`.
 
@@ -62,3 +73,6 @@ accepted for the case at hand.
 - `references/pedagogy.md` — the evidence-grounded rubric for which type(s) fit a given piece of
   content, and for judging a whole quiz's type mixture.
 - `references/moodle-xml-formats.md` — the mechanical XML shape of every supported question type.
+- `scripts/smoke_test_live_moodle.py` — a worked example constructing one instance of every
+  supported question type with correct constructor arguments; use it as a Python usage reference
+  when a dataclass's arguments aren't obvious from its definition alone.

@@ -363,8 +363,9 @@ class ClozeQuestion:
 
 @dataclass
 class DragIntoTextQuestion:
-    """Confirmed live (Moodle source: question/type/ddwtos/questiontype.php's
-    export_to_xml): XML type "ddwtos". Blanks in questiontext are literal [[1]],
+    """Confirmed by reading Moodle source directly (question/type/ddwtos/questiontype.php's
+    export_to_xml) -- not verified via a live round-trip or shipped fixture, unlike most other
+    types in this file. XML type "ddwtos". Blanks in questiontext are literal [[1]],
     [[2]] markers; draggable words are <dragbox> elements with <text>/<group>
     (a blank only accepts drag items from a matching group)."""
 
@@ -396,8 +397,9 @@ class DragIntoTextQuestion:
 
 @dataclass
 class DragOntoImageQuestion:
-    """Confirmed live (Moodle source: question/type/ddimageortext/questiontype.php's
-    export_to_xml): XML type "ddimageortext". The background image is embedded as a
+    """Confirmed by reading Moodle source directly (question/type/ddimageortext/questiontype.php's
+    export_to_xml) -- not verified via a live round-trip or shipped fixture, unlike most other
+    types in this file. XML type "ddimageortext". The background image is embedded as a
     base64 <file> element. <drag> items are top-level (1-indexed via <no>); <drop>
     zones reference the correct drag via <choice> (matching a drag's <no>) and give
     pixel coordinates via <xleft>/<ytop>."""
@@ -447,8 +449,9 @@ class DragOntoImageQuestion:
 
 @dataclass
 class DragMarkersQuestion:
-    """Confirmed live (Moodle source: question/type/ddmarker/questiontype.php's
-    export_to_xml): XML type "ddmarker". Drop zones are shapes, not points: <shape>
+    """Confirmed by reading Moodle source directly (question/type/ddmarker/questiontype.php's
+    export_to_xml) -- not verified via a live round-trip or shipped fixture, unlike most other
+    types in this file. XML type "ddmarker". Drop zones are shapes, not points: <shape>
     is "circle" (coords "x,y;radius"), "poly" (coords "x1,y1;x2,y2;..."), or
     "rectangle" (coords "x,y;width,height")."""
 
