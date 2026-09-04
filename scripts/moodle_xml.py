@@ -563,6 +563,89 @@ class OrderingQuestion:
         )
 
 
+@dataclass
+class CalculatedWildcard:
+    """One dataset_definition -- a wildcard variable in a Calculated question's
+    formula, e.g. {x} in "What is {x} + {y}?". Derived from reading
+    question/format/xml/format.php's writequestion() 'calculated' case directly
+    (no shipped Moodle fixture existed to verify this type against live -- see this
+    plan's Global Constraints and Task 9's live-round-trip smoke test)."""
+
+    name: str
+    minimum: float
+    maximum: float
+    decimals: int = 0
+
+    def to_xml(self) -> str:
+        # Note: status/name/distribution/minimum/maximum/decimals carry NO format
+        # attribute in the verified schema (unlike questiontext/feedback-family
+        # fields) -- each is a plain <tag><text>value</text></tag>, so _text_block
+        # (which always adds format="...") is not used here.
+        return (
+            f'    <dataset_definition>\n'
+            f'      <status>\n{_plain_text("private", indent="        ")}\n      </status>\n'
+            f'      <name>\n{_plain_text(self.name, indent="        ")}\n      </name>\n'
+            f'      <type>calculated</type>\n'
+            f'      <distribution>\n{_plain_text("uniform", indent="        ")}\n      </distribution>\n'
+            f'      <minimum>\n{_plain_text(str(self.minimum), indent="        ")}\n      </minimum>\n'
+            f'      <maximum>\n{_plain_text(str(self.maximum), indent="        ")}\n      </maximum>\n'
+            f'      <decimals>\n{_plain_text(str(self.decimals), indent="        ")}\n      </decimals>\n'
+            f'      <itemcount>1</itemcount>\n'
+            f'      <dataset_items>\n'
+            f'        <dataset_item>\n'
+            f'          <number>1</number>\n'
+            f'          <value>{self.minimum}</value>\n'
+            f'        </dataset_item>\n'
+            f'      </dataset_items>\n'
+            f'      <number_of_items>1</number_of_items>\n'
+            f'    </dataset_definition>'
+        )
+
+
+@dataclass
+class CalculatedQuestion:
+    """Confirmed via direct reading of Moodle's qformat_xml source (no shipped
+    fixture existed -- see Task 9's live-round-trip smoke test): XML type
+    "calculated". Wildcards like {x} appear in both questiontext and the answer's
+    formula text, resolved from <dataset_definitions> at attempt time."""
+
+    name: str
+    questiontext_with_wildcards: str
+    formula: str
+    wildcards: list
+    tolerance: float = 0.01
+    correct_feedback: str = "Correct."
+
+    def to_xml(self) -> str:
+        base = _base_question_fields(self.name, self.questiontext_with_wildcards)
+        definitions_xml = "\n".join(w.to_xml() for w in self.wildcards)
+        return (
+            f'<question type="calculated">\n'
+            f'{base}\n'
+            f'  <synchronize>0</synchronize>\n'
+            f'  <single>true</single>\n'
+            f'  <answernumbering>abc</answernumbering>\n'
+            f'  <shuffleanswers>0</shuffleanswers>\n'
+            f'{_combined_feedback()}\n'
+            f'  <answer fraction="100" format="html">\n'
+            f'{_plain_text(self.formula, indent="    ")}\n'
+            f'    <tolerance>{self.tolerance}</tolerance>\n'
+            f'    <tolerancetype>1</tolerancetype>\n'
+            f'    <correctanswerformat>1</correctanswerformat>\n'
+            f'    <correctanswerlength>2</correctanswerlength>\n'
+            f'{_text_block("feedback", self.correct_feedback, indent="    ")}\n'
+            f'  </answer>\n'
+            f'  <unitgradingtype>0</unitgradingtype>\n'
+            f'  <unitpenalty>0.1</unitpenalty>\n'
+            f'  <showunits>3</showunits>\n'
+            f'  <unitsleft>0</unitsleft>\n'
+            f'  <dataset_definitions>\n'
+            f'{definitions_xml}\n'
+            f'  </dataset_definitions>\n'
+            f'</question>'
+        )
+
+
 def write_moodle_xml(questions: list, path: str) -> None:
     """Writes a list of question dataclasses (each exposing .to_xml()) as one Moodle
     XML quiz file -- the whole document-to-quiz output of assessment-item-forge."""

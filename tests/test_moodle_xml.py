@@ -17,6 +17,8 @@ from scripts.moodle_xml import (
     DragMarkersQuestion,
     SelectMissingWordsQuestion,
     OrderingQuestion,
+    CalculatedWildcard,
+    CalculatedQuestion,
     write_moodle_xml,
     _cdata,
     _text_block,
@@ -348,3 +350,30 @@ def test_ordering_to_xml_uses_answer_fraction_as_sequence_position():
 def test_ordering_requires_at_least_three_items():
     with pytest.raises(ValueError, match="at least 3"):
         OrderingQuestion(name="Q", questiontext="?", items_in_order=["A", "B"])
+
+
+def test_calculated_to_xml_has_dataset_definitions_per_wildcard():
+    q = CalculatedQuestion(
+        name="Sum of two numbers",
+        questiontext_with_wildcards="What is {x} + {y}?",
+        formula="{x}+{y}",
+        wildcards=[
+            CalculatedWildcard(name="x", minimum=1, maximum=10),
+            CalculatedWildcard(name="y", minimum=1, maximum=10),
+        ],
+    )
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    question = root.find("question")
+    assert question.get("type") == "calculated"
+    assert "{x}" in question.find("questiontext/text").text
+    answer = question.find("answer")
+    assert answer.get("fraction") == "100"
+    assert answer.find("text").text == "{x}+{y}"
+    assert answer.find("tolerance").text == "0.01"
+    definitions = question.findall("dataset_definitions/dataset_definition")
+    assert len(definitions) == 2
+    assert definitions[0].find("name/text").text == "x"
+    assert definitions[0].find("minimum/text").text == "1"
+    assert definitions[0].find("maximum/text").text == "10"
+    assert definitions[0].find("distribution/text").text == "uniform"
+    assert question.find("unitgradingtype").text == "0"
