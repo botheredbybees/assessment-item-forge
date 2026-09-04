@@ -1760,13 +1760,19 @@ def test_check_distribution_passes_a_well_balanced_set():
 
 
 def test_check_distribution_within_tolerance_of_one_item_still_passes():
-    # 10 questions, target for "longest" is 15% = 1.5 -> tolerance +/-1 means 0-2 or
-    # so is acceptable depending on rounding; 3 "longest" out of 10 should still pass
-    # with the default tolerance since it's within 1 item of the rounded target.
+    # 20 questions: target_counts = {shortest: 3, longest: 3, middle: 14}. Give 4
+    # "longest" (target 3, diff 1 -- within tolerance), 3 "shortest" (diff 0), and
+    # 13 "middle" (target 14, diff 1 -- within tolerance) -- ALL THREE buckets must
+    # independently be within tolerance for a "pass", not just the one bucket being
+    # deliberately tested; a smaller n here previously left "shortest" at 0 against
+    # a target of 2, which correctly failed on its own even though "longest" alone
+    # was within tolerance -- that was a bug in this test, not in check_distribution.
     items = []
-    for i in range(10):
-        if i < 3:
+    for i in range(20):
+        if i < 4:
             items.append(_FakeMCQ(f"Q{i}", 90, [30, 40, 50]))  # longest
+        elif i < 7:
+            items.append(_FakeMCQ(f"Q{i}", 20, [50, 60, 55]))  # shortest
         else:
             items.append(_FakeMCQ(f"Q{i}", 55, [30, 90, 40]))  # middle
     report = check_distribution(items, tolerance=1)
