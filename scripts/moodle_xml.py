@@ -1,3 +1,4 @@
+import base64
 from dataclasses import dataclass, field
 
 
@@ -358,6 +359,140 @@ class ClozeQuestion:
     def to_xml(self) -> str:
         base = _base_question_fields(self.name, self._rendered_text())
         return f'<question type="cloze">\n{base}\n</question>'
+
+
+@dataclass
+class DragIntoTextQuestion:
+    """Confirmed live (Moodle source: question/type/ddwtos/questiontype.php's
+    export_to_xml): XML type "ddwtos". Blanks in questiontext are literal [[1]],
+    [[2]] markers; draggable words are <dragbox> elements with <text>/<group>
+    (a blank only accepts drag items from a matching group)."""
+
+    name: str
+    questiontext_with_blanks: str
+    drag_items: list  # [(text, group), ...]
+    shuffle_answers: bool = True
+
+    def to_xml(self) -> str:
+        base = _base_question_fields(self.name, self.questiontext_with_blanks)
+        dragboxes = []
+        for text, group in self.drag_items:
+            dragboxes.append(
+                f'  <dragbox>\n'
+                f'{_plain_text(text, indent="    ")}\n'
+                f'    <group>{group}</group>\n'
+                f'  </dragbox>'
+            )
+        dragboxes_xml = "\n".join(dragboxes)
+        return (
+            f'<question type="ddwtos">\n'
+            f'{base}\n'
+            f'  <shuffleanswers>{1 if self.shuffle_answers else 0}</shuffleanswers>\n'
+            f'{_combined_feedback(show_num_correct=True)}\n'
+            f'{dragboxes_xml}\n'
+            f'</question>'
+        )
+
+
+@dataclass
+class DragOntoImageQuestion:
+    """Confirmed live (Moodle source: question/type/ddimageortext/questiontype.php's
+    export_to_xml): XML type "ddimageortext". The background image is embedded as a
+    base64 <file> element. <drag> items are top-level (1-indexed via <no>); <drop>
+    zones reference the correct drag via <choice> (matching a drag's <no>) and give
+    pixel coordinates via <xleft>/<ytop>."""
+
+    name: str
+    questiontext: str
+    image_bytes: bytes
+    image_filename: str
+    drags: list  # [(text, draggroup), ...], 1-indexed by position
+    drops: list  # [(drag_no, xleft, ytop), ...]
+    shuffle_answers: bool = True
+
+    def to_xml(self) -> str:
+        base = _base_question_fields(self.name, self.questiontext)
+        image_b64 = base64.b64encode(self.image_bytes).decode("ascii")
+        drags_xml = []
+        for i, (text, draggroup) in enumerate(self.drags, start=1):
+            drags_xml.append(
+                f'  <drag>\n'
+                f'    <no>{i}</no>\n'
+                f'{_plain_text(text, indent="    ")}\n'
+                f'    <draggroup>{draggroup}</draggroup>\n'
+                f'  </drag>'
+            )
+        drops_xml = []
+        for drag_no, xleft, ytop in self.drops:
+            drops_xml.append(
+                f'  <drop>\n'
+                f'    <text></text>\n'
+                f'    <no>{drag_no}</no>\n'
+                f'    <choice>{drag_no}</choice>\n'
+                f'    <xleft>{xleft}</xleft>\n'
+                f'    <ytop>{ytop}</ytop>\n'
+                f'  </drop>'
+            )
+        return (
+            f'<question type="ddimageortext">\n'
+            f'{base}\n'
+            f'  <shuffleanswers>{1 if self.shuffle_answers else 0}</shuffleanswers>\n'
+            f'{_combined_feedback()}\n'
+            f'  <file name="{self.image_filename}" path="/" encoding="base64">{image_b64}</file>\n'
+            f'{chr(10).join(drags_xml)}\n'
+            f'{chr(10).join(drops_xml)}\n'
+            f'</question>'
+        )
+
+
+@dataclass
+class DragMarkersQuestion:
+    """Confirmed live (Moodle source: question/type/ddmarker/questiontype.php's
+    export_to_xml): XML type "ddmarker". Drop zones are shapes, not points: <shape>
+    is "circle" (coords "x,y;radius"), "poly" (coords "x1,y1;x2,y2;..."), or
+    "rectangle" (coords "x,y;width,height")."""
+
+    name: str
+    questiontext: str
+    image_bytes: bytes
+    image_filename: str
+    drags: list  # [text, ...], 1-indexed by position
+    drops: list  # [(drag_no, shape, coords), ...]
+    shuffle_answers: bool = True
+
+    def to_xml(self) -> str:
+        base = _base_question_fields(self.name, self.questiontext)
+        image_b64 = base64.b64encode(self.image_bytes).decode("ascii")
+        drags_xml = []
+        for i, text in enumerate(self.drags, start=1):
+            drags_xml.append(
+                f'  <drag>\n'
+                f'    <no>{i}</no>\n'
+                f'{_plain_text(text, indent="    ")}\n'
+                f'    <noofdrags>1</noofdrags>\n'
+                f'  </drag>'
+            )
+        drops_xml = []
+        for drag_no, shape, coords in self.drops:
+            drops_xml.append(
+                f'  <drop>\n'
+                f'    <no>{drag_no}</no>\n'
+                f'    <shape>{shape}</shape>\n'
+                f'    <coords>{coords}</coords>\n'
+                f'    <choice>{drag_no}</choice>\n'
+                f'  </drop>'
+            )
+        return (
+            f'<question type="ddmarker">\n'
+            f'{base}\n'
+            f'  <shuffleanswers>{1 if self.shuffle_answers else 0}</shuffleanswers>\n'
+            f'  <showmisplaced/>\n'
+            f'{_combined_feedback()}\n'
+            f'  <file name="{self.image_filename}" path="/" encoding="base64">{image_b64}</file>\n'
+            f'{chr(10).join(drags_xml)}\n'
+            f'{chr(10).join(drops_xml)}\n'
+            f'</question>'
+        )
 
 
 def write_moodle_xml(questions: list, path: str) -> None:

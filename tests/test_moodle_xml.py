@@ -1,3 +1,4 @@
+import base64
 import xml.etree.ElementTree as ET
 import pytest
 
@@ -11,6 +12,9 @@ from scripts.moodle_xml import (
     MatchingQuestion,
     ClozeBlank,
     ClozeQuestion,
+    DragIntoTextQuestion,
+    DragOntoImageQuestion,
+    DragMarkersQuestion,
     write_moodle_xml,
     _cdata,
     _text_block,
@@ -232,3 +236,68 @@ def test_cloze_question_requires_matching_blank_and_placeholder_count():
             template="Only one blank here: {}.",
             blanks=[ClozeBlank(kind="SHORTANSWER", correct="A"), ClozeBlank(kind="SHORTANSWER", correct="B")],
         )
+
+
+def test_drag_into_text_to_xml_has_dragboxes_and_blanks():
+    q = DragIntoTextQuestion(
+        name="Sample drag-into-text",
+        questiontext_with_blanks="The stage that writes raw files is [[1]], and the stage that parses them is [[2]].",
+        drag_items=[("OpenRVDAS", 1), ("fluentd", 1)],
+    )
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    question = root.find("question")
+    assert question.get("type") == "ddwtos"
+    assert "[[1]]" in question.find("questiontext/text").text
+    dragboxes = question.findall("dragbox")
+    assert len(dragboxes) == 2
+    assert dragboxes[0].find("text").text == "OpenRVDAS"
+    assert dragboxes[0].find("group").text == "1"
+    assert question.find("shuffleanswers") is not None
+    assert question.find("correctfeedback") is not None
+
+
+def test_drag_onto_image_to_xml_embeds_base64_image_and_drop_coords():
+    q = DragOntoImageQuestion(
+        name="Sample drag-onto-image",
+        questiontext="Label the pipeline diagram.",
+        image_bytes=b"fake-png-bytes",
+        image_filename="diagram.png",
+        drags=[("OpenRVDAS", 1), ("fluentd", 1)],
+        drops=[(1, 120, 80), (2, 300, 80)],
+    )
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    question = root.find("question")
+    assert question.get("type") == "ddimageortext"
+    file_el = question.find("file")
+    assert file_el.get("name") == "diagram.png"
+    assert file_el.get("encoding") == "base64"
+    assert base64.b64decode(file_el.text) == b"fake-png-bytes"
+    drags = question.findall("drag")
+    assert len(drags) == 2
+    assert drags[0].find("no").text == "1"
+    assert drags[0].find("text").text == "OpenRVDAS"
+    drops = question.findall("drop")
+    assert len(drops) == 2
+    assert drops[0].find("choice").text == "1"
+    assert drops[0].find("xleft").text == "120"
+    assert drops[0].find("ytop").text == "80"
+
+
+def test_drag_markers_to_xml_has_shape_and_coords():
+    q = DragMarkersQuestion(
+        name="Sample drag-marker",
+        questiontext="Mark each instrument's location.",
+        image_bytes=b"fake-png-bytes",
+        image_filename="ship-diagram.png",
+        drags=["CTD"],
+        drops=[(1, "circle", "150,200;40")],
+    )
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    question = root.find("question")
+    assert question.get("type") == "ddmarker"
+    drags = question.findall("drag")
+    assert drags[0].find("text").text == "CTD"
+    drops = question.findall("drop")
+    assert drops[0].find("shape").text == "circle"
+    assert drops[0].find("coords").text == "150,200;40"
+    assert drops[0].find("choice").text == "1"
