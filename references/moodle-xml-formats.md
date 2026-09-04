@@ -59,7 +59,7 @@ encoding="base64">`; `<drag><no>/<text>/<draggroup>` (top-level, 1-indexed); `<d
 
 **Drag-and-drop Markers** (`ddmarker`): same image-embedding as onto-image; `<drop>
 <no>/<shape>/<coords>/<choice>` where shape is `circle` (`x,y;radius`), `poly`
-(`x1,y1;x2,y2;...`), or `rectangle` (`x,y;width;height`); self-closing `<showmisplaced/>` flag.
+(`x1,y1;x2,y2;...`), or `rectangle` (`x,y;width,height`); self-closing `<showmisplaced/>` flag.
 
 **Select Missing Words** (`gapselect`): `[[1]]`/`[[2]]` blank markers; choices are
 `<selectoption><text>/<group>` — NOT the generic `<answer>` block other types use.
