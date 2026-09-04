@@ -23,7 +23,11 @@ dependencies for the runtime code itself — the whole point is portability.
 
 ## Global Constraints
 
-- **No AI-authorship commit trailers.** This repo is public on GitHub; keep commits clean.
+- **AI-authorship commit trailers are fine here** (unlike the Nuyina AAD workspace's Bitbucket/
+  Confluence content, where they're deliberately avoided for organizational-visibility reasons —
+  see that workspace's own `CLAUDE.md`). This is Peter's personal GitHub repo; no such constraint
+  applies. Earlier tasks in this plan's execution history predate this clarification and have the
+  trailer stripped — that's fine as-is, no need to go back and add it retroactively.
 - **Moodle XML only — no GIFT.** Every dataclass emits Moodle XML directly; nothing in this repo
   produces or parses GIFT.
 - **Every question-level text field** (`questiontext`, `generalfeedback`, `feedback`, `name`) is
