@@ -3,6 +3,10 @@ import xml.etree.ElementTree as ET
 from scripts.moodle_xml import (
     MultipleChoiceQuestion,
     TrueFalseQuestion,
+    NumericalQuestion,
+    DescriptionQuestion,
+    ShortAnswerQuestion,
+    EssayQuestion,
     write_moodle_xml,
     _cdata,
     _text_block,
@@ -106,3 +110,53 @@ def test_write_moodle_xml_wraps_questions_in_quiz_root(tmp_path):
     assert len(questions) == 2
     assert questions[0].get("type") == "multichoice"
     assert questions[1].get("type") == "truefalse"
+
+
+def test_numerical_to_xml_has_tolerance_and_unit_fields():
+    q = NumericalQuestion(name="Sample Numerical", questiontext="What is 2 + 2?", answer=4.0)
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    question = root.find("question")
+    assert question.get("type") == "numerical"
+    answer = question.find("answer")
+    assert answer.get("fraction") == "100"
+    assert answer.find("text").text == "4.0"
+    assert answer.find("tolerance").text == "0.01"
+    assert question.find("unitgradingtype").text == "0"
+    assert question.find("unitsleft").text == "0"
+
+
+def test_description_to_xml_has_no_answers_and_zero_grade():
+    q = DescriptionQuestion(name="Sample Description", text="This is informational only.")
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    question = root.find("question")
+    assert question.get("type") == "description"
+    assert question.findall("answer") == []
+    assert question.find("defaultgrade").text == "0.0000000"
+
+
+def test_short_answer_to_xml_has_usecase_and_answer():
+    q = ShortAnswerQuestion(name="SA Sample", questiontext="What is the capital of France?", answer="Paris")
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    question = root.find("question")
+    assert question.get("type") == "shortanswer"
+    assert question.find("usecase").text == "0"
+    answer = question.find("answer")
+    assert answer.get("fraction") == "100"
+    assert answer.find("text").text == "Paris"
+
+
+def test_short_answer_use_case_true_sets_usecase_1():
+    q = ShortAnswerQuestion(name="Q", questiontext="?", answer="X", use_case=True)
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    assert root.find("question/usecase").text == "1"
+
+
+def test_essay_to_xml_has_required_response_fields():
+    q = EssayQuestion(name="Essay Sample", questiontext="Describe the water cycle.")
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    question = root.find("question")
+    assert question.get("type") == "essay"
+    assert question.find("responseformat").text == "editor"
+    assert question.find("responserequired").text == "1"
+    assert question.find("responsefieldlines").text == "15"
+    assert question.find("attachments").text == "0"

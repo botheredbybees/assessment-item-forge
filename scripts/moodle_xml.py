@@ -163,6 +163,118 @@ class TrueFalseQuestion:
         )
 
 
+@dataclass
+class NumericalQuestion:
+    """Confirmed live: XML type "numerical". A single <answer> with <tolerance>, plus
+    top-level unitgradingtype/unitpenalty/showunits/unitsleft fields that must be
+    present even when no units are configured (showunits=3 means "no units used")."""
+
+    name: str
+    questiontext: str
+    answer: float
+    tolerance: float = 0.01
+    correct_feedback: str = "Correct."
+
+    def to_xml(self) -> str:
+        base = _base_question_fields(self.name, self.questiontext)
+        return (
+            f'<question type="numerical">\n'
+            f'{base}\n'
+            f'  <answer fraction="100" format="html">\n'
+            f'{_plain_text(str(self.answer), indent="    ")}\n'
+            f'{_text_block("feedback", self.correct_feedback, indent="    ")}\n'
+            f'    <tolerance>{self.tolerance}</tolerance>\n'
+            f'  </answer>\n'
+            f'  <unitgradingtype>0</unitgradingtype>\n'
+            f'  <unitpenalty>1.0000000</unitpenalty>\n'
+            f'  <showunits>3</showunits>\n'
+            f'  <unitsleft>0</unitsleft>\n'
+            f'</question>'
+        )
+
+
+@dataclass
+class DescriptionQuestion:
+    """Confirmed live: XML type "description". No <answer> elements at all;
+    defaultgrade="0.0000000" is the tell that it's ungraded, informational content."""
+
+    name: str
+    text: str
+
+    def to_xml(self) -> str:
+        base = _base_question_fields(self.name, self.text, defaultgrade="0.0000000")
+        return f'<question type="description">\n{base}\n</question>'
+
+
+@dataclass
+class ShortAnswerQuestion:
+    """Confirmed live: XML type "shortanswer". Requires <usecase> (case-sensitivity
+    flag) even for a single accepted answer.
+
+    Per this repo's own content-authoring guidance (see references/pedagogy.md):
+    Short Answer's exact/wildcard string matching produces false negatives for benign
+    spelling or formatting variation -- the skill steers authors toward other types by
+    default. This dataclass exists to support it when a user judges the tradeoff
+    acceptable, not to encourage it.
+    """
+
+    name: str
+    questiontext: str
+    answer: str
+    use_case: bool = False
+    correct_feedback: str = "Correct."
+
+    def to_xml(self) -> str:
+        base = _base_question_fields(self.name, self.questiontext)
+        return (
+            f'<question type="shortanswer">\n'
+            f'{base}\n'
+            f'  <usecase>{"1" if self.use_case else "0"}</usecase>\n'
+            f'  <answer fraction="100" format="html">\n'
+            f'{_plain_text(self.answer, indent="    ")}\n'
+            f'{_text_block("feedback", self.correct_feedback, indent="    ")}\n'
+            f'  </answer>\n'
+            f'</question>'
+        )
+
+
+@dataclass
+class EssayQuestion:
+    """Confirmed live: XML type "essay". Requires responseformat/responserequired/
+    responsefieldlines plus several empty-but-present fields (minwordlimit,
+    maxwordlimit, attachments, attachmentsrequired, maxbytes, filetypeslist,
+    graderinfo, responsetemplate) -- Moodle emits all of these even when unset.
+
+    Per this repo's own content-authoring guidance (see references/pedagogy.md):
+    Essay requires a human to manually grade every attempt, which doesn't fit a
+    retakeable/self-directed formative model. Supported for when a user judges the
+    grading-burden tradeoff acceptable, not encouraged by default.
+    """
+
+    name: str
+    questiontext: str
+    response_field_lines: int = 15
+
+    def to_xml(self) -> str:
+        base = _base_question_fields(self.name, self.questiontext)
+        return (
+            f'<question type="essay">\n'
+            f'{base}\n'
+            f'  <responseformat>editor</responseformat>\n'
+            f'  <responserequired>1</responserequired>\n'
+            f'  <responsefieldlines>{self.response_field_lines}</responsefieldlines>\n'
+            f'  <minwordlimit></minwordlimit>\n'
+            f'  <maxwordlimit></maxwordlimit>\n'
+            f'  <attachments>0</attachments>\n'
+            f'  <attachmentsrequired>0</attachmentsrequired>\n'
+            f'  <maxbytes>0</maxbytes>\n'
+            f'  <filetypeslist></filetypeslist>\n'
+            f'{_text_block("graderinfo", "")}\n'
+            f'{_text_block("responsetemplate", "")}\n'
+            f'</question>'
+        )
+
+
 def write_moodle_xml(questions: list, path: str) -> None:
     """Writes a list of question dataclasses (each exposing .to_xml()) as one Moodle
     XML quiz file -- the whole document-to-quiz output of assessment-item-forge."""
