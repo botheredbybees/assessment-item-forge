@@ -15,6 +15,8 @@ from scripts.moodle_xml import (
     DragIntoTextQuestion,
     DragOntoImageQuestion,
     DragMarkersQuestion,
+    SelectMissingWordsQuestion,
+    OrderingQuestion,
     write_moodle_xml,
     _cdata,
     _text_block,
@@ -301,3 +303,48 @@ def test_drag_markers_to_xml_has_shape_and_coords():
     assert drops[0].find("shape").text == "circle"
     assert drops[0].find("coords").text == "150,200;40"
     assert drops[0].find("choice").text == "1"
+
+
+def test_select_missing_words_uses_selectoption_not_answer():
+    # Real structural fact confirmed against Moodle's own shipped test fixture
+    # (question/type/gapselect/tests/fixtures/testquestion.moodle.xml): choices use
+    # <selectoption> with <text>/<group> children, NOT the generic <answer> block.
+    q = SelectMissingWordsQuestion(
+        name="Sample gapselect",
+        questiontext_with_blanks="The [[1]] [[2]] on the [[3]].",
+        options=[("cat", 1), ("sat", 1), ("mat", 1), ("dog", 1), ("table", 1)],
+    )
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    question = root.find("question")
+    assert question.get("type") == "gapselect"
+    assert question.findall("answer") == []
+    options = question.findall("selectoption")
+    assert len(options) == 5
+    assert options[0].find("text").text == "cat"
+    assert options[0].find("group").text == "1"
+
+
+def test_ordering_to_xml_uses_answer_fraction_as_sequence_position():
+    # Confirmed against Moodle's own shipped test fixture
+    # (question/type/ordering/tests/fixtures/testquestion.moodle.xml): items are
+    # <answer> blocks in correct order; fraction holds the sequence POSITION here,
+    # not a percentage-correct weight like every other type that uses <answer>.
+    q = OrderingQuestion(
+        name="Sample ordering",
+        questiontext="Put these pipeline stages in order.",
+        items_in_order=["OpenRVDAS", "fluentd", "InfluxDB", "Grafana"],
+    )
+    root = ET.fromstring(f"<quiz>{q.to_xml()}</quiz>")
+    question = root.find("question")
+    assert question.get("type") == "ordering"
+    answers = question.findall("answer")
+    assert [a.find("text").text for a in answers] == ["OpenRVDAS", "fluentd", "InfluxDB", "Grafana"]
+    assert answers[0].get("fraction") == "1.0000000"
+    assert answers[3].get("fraction") == "4.0000000"
+    assert question.find("layouttype").text == "VERTICAL"
+    assert question.find("gradingtype").text == "ABSOLUTE_POSITION"
+
+
+def test_ordering_requires_at_least_three_items():
+    with pytest.raises(ValueError, match="at least 3"):
+        OrderingQuestion(name="Q", questiontext="?", items_in_order=["A", "B"])

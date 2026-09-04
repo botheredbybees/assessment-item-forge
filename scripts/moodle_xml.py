@@ -495,6 +495,74 @@ class DragMarkersQuestion:
         )
 
 
+@dataclass
+class SelectMissingWordsQuestion:
+    """Confirmed against Moodle's own shipped test fixture
+    (question/type/gapselect/tests/fixtures/testquestion.moodle.xml): XML type
+    "gapselect". Blanks are literal [[1]], [[2]] markers in questiontext (same
+    convention as ddwtos); choices are <selectoption> elements with <text>/<group>
+    -- NOT the generic <answer> block other types use."""
+
+    name: str
+    questiontext_with_blanks: str
+    options: list  # [(text, group), ...]
+    shuffle_answers: bool = False
+
+    def to_xml(self) -> str:
+        base = _base_question_fields(self.name, self.questiontext_with_blanks)
+        options_xml = "\n".join(
+            f'  <selectoption>\n{_plain_text(text, indent="    ")}\n    <group>{group}</group>\n  </selectoption>'
+            for text, group in self.options
+        )
+        return (
+            f'<question type="gapselect">\n'
+            f'{base}\n'
+            f'  <shuffleanswers>{1 if self.shuffle_answers else 0}</shuffleanswers>\n'
+            f'{_combined_feedback(show_num_correct=True)}\n'
+            f'{options_xml}\n'
+            f'</question>'
+        )
+
+
+@dataclass
+class OrderingQuestion:
+    """Confirmed against Moodle's own shipped test fixture
+    (question/type/ordering/tests/fixtures/testquestion.moodle.xml): XML type
+    "ordering". `items_in_order` must already be in the correct sequence -- each
+    becomes an <answer> block whose `fraction` holds its 1-indexed sequence
+    POSITION (not a percentage-correct weight, unlike every other type that uses
+    <answer>). Requires at least 3 items: fewer isn't a meaningful sequencing task.
+    """
+
+    name: str
+    questiontext: str
+    items_in_order: list
+    layout: str = "VERTICAL"
+
+    def __post_init__(self):
+        if len(self.items_in_order) < 3:
+            raise ValueError("Ordering needs at least 3 items to be a meaningful sequencing task")
+
+    def to_xml(self) -> str:
+        base = _base_question_fields(self.name, self.questiontext)
+        answers_xml = "\n".join(
+            f'  <answer fraction="{i}.0000000" format="html">\n{_plain_text(item, indent="    ")}\n  </answer>'
+            for i, item in enumerate(self.items_in_order, start=1)
+        )
+        return (
+            f'<question type="ordering">\n'
+            f'{base}\n'
+            f'  <layouttype>{self.layout}</layouttype>\n'
+            f'  <selecttype>ALL</selecttype>\n'
+            f'  <selectcount>{len(self.items_in_order)}</selectcount>\n'
+            f'  <gradingtype>ABSOLUTE_POSITION</gradingtype>\n'
+            f'  <showgrading>SHOW</showgrading>\n'
+            f'{_combined_feedback(show_num_correct=True)}\n'
+            f'{answers_xml}\n'
+            f'</question>'
+        )
+
+
 def write_moodle_xml(questions: list, path: str) -> None:
     """Writes a list of question dataclasses (each exposing .to_xml()) as one Moodle
     XML quiz file -- the whole document-to-quiz output of assessment-item-forge."""
