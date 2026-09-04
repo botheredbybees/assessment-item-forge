@@ -29,6 +29,18 @@ def _name_block(name: str, indent: str = "  ") -> str:
     return f'{indent}<name>\n{indent}  <text>{_cdata(name)}</text>\n{indent}</name>'
 
 
+def _plain_text(text: str, indent: str = "  ") -> str:
+    """A bare <text>...</text> element with NO wrapping tag and NO format
+    attribute -- the shape an <answer>'s own text child uses (the format
+    attribute already lives on the parent <answer format="..."> element).
+    Deliberately distinct from _text_block(), which always adds a format
+    attribute on its wrapping tag -- do not use _text_block("text", ...) for
+    this shape, it produces an incorrect nested <text><text>...</text></text>
+    structure. Confirmed live against a running Moodle 5.0.2 instance.
+    """
+    return f'{indent}<text>{_cdata(text)}</text>'
+
+
 def _base_question_fields(name: str, questiontext: str, defaultgrade: str = "1.0000000",
                            penalty: str = "0.3333333", general_feedback: str = "") -> str:
     """Fields present on every question type regardless of qtype -- confirmed live:
@@ -92,12 +104,12 @@ class MultipleChoiceQuestion:
     def to_xml(self) -> str:
         base = _base_question_fields(self.name, self.questiontext)
         answers = [f'  <answer fraction="100" format="html">\n'
-                   f'    <text>{_cdata(self.correct)}</text>\n'
+                   f'{_plain_text(self.correct, indent="    ")}\n'
                    f'{_text_block("feedback", self.correct_feedback_text, indent="    ")}\n'
                    f'  </answer>']
         for opt in self.incorrect:
             answers.append(f'  <answer fraction="0" format="html">\n'
-                            f'    <text>{_cdata(opt)}</text>\n'
+                            f'{_plain_text(opt, indent="    ")}\n'
                             f'{_text_block("feedback", self.incorrect_feedback_text, indent="    ")}\n'
                             f'  </answer>')
         answers_xml = "\n".join(answers)
@@ -140,11 +152,11 @@ class TrueFalseQuestion:
             f'<question type="truefalse">\n'
             f'{base}\n'
             f'  <answer fraction="{true_fraction}" format="html">\n'
-            f'    <text>{_cdata("true")}</text>\n'
+            f'{_plain_text("true", indent="    ")}\n'
             f'{_text_block("feedback", true_feedback, indent="    ")}\n'
             f'  </answer>\n'
             f'  <answer fraction="{false_fraction}" format="html">\n'
-            f'    <text>{_cdata("false")}</text>\n'
+            f'{_plain_text("false", indent="    ")}\n'
             f'{_text_block("feedback", false_feedback, indent="    ")}\n'
             f'  </answer>\n'
             f'</question>'
