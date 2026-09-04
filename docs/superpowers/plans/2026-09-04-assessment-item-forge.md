@@ -189,11 +189,16 @@ git commit -m "docs: repo scaffolding, CC BY-SA 4.0 license, attribution"
 **Interfaces:**
 - Consumes: nothing.
 - Produces: `_cdata(text: str) -> str`, `_text_block(tag: str, text: str, fmt: str = "html") -> str`,
-  `_name_block(name: str) -> str`, `_base_question_fields(name: str, questiontext: str,
+  `_name_block(name: str) -> str`, `_plain_text(text: str, indent: str = "  ") -> str`,
+  `_base_question_fields(name: str, questiontext: str,
   defaultgrade: str = "1.0000000", penalty: str = "0.3333333", general_feedback: str = "") -> str`,
   `_combined_feedback(correct: str = "Correct.", partial: str = "Partially correct.", incorrect:
   str = "Incorrect.", show_num_correct: bool = False) -> str` — every later task in this plan uses
-  these four helpers, never re-implementing base-field or combined-feedback XML by hand.
+  these five helpers, never re-implementing base-field or combined-feedback XML by hand.
+  **`_plain_text` is for any bare `<text>...</text>` element with no format attribute on it**
+  (an `<answer>`'s own text, a `<dragbox>`/`<drag>`/`<drop>`/`<selectoption>`/`<subquestion>`'s text)
+  — `_text_block("text", ...)` must never be used for this shape; it always adds a format attribute
+  and produces an incorrect nested `<text><text>...</text></text>` structure regardless of context.
   `MultipleChoiceQuestion(name, questiontext, correct, incorrect, single=True,
   shuffle_answers=True, correct_feedback="Correct.", incorrect_feedback="Incorrect.")` with
   `.to_xml() -> str`, `.option_lengths() -> tuple[int, list[int]]` (returns `(correct_length,
@@ -356,6 +361,19 @@ def _name_block(name: str, indent: str = "  ") -> str:
     return f'{indent}<name>\n{indent}  <text>{_cdata(name)}</text>\n{indent}</name>'
 
 
+def _plain_text(text: str, indent: str = "  ") -> str:
+    """A bare <text>...</text> element with NO wrapping tag and NO format
+    attribute -- the shape an <answer>'s own text child uses (the format
+    attribute already lives on the parent <answer format="..."> element), and
+    the same shape dragbox/drag/drop/selectoption/subquestion text children use.
+    Deliberately distinct from _text_block(), which always adds a format
+    attribute on its wrapping tag -- never use _text_block("text", ...) for this
+    shape, it produces an incorrect nested <text><text>...</text></text>
+    structure. Confirmed live against a running Moodle 5.0.2 instance.
+    """
+    return f'{indent}<text>{_cdata(text)}</text>'
+
+
 def _base_question_fields(name: str, questiontext: str, defaultgrade: str = "1.0000000",
                            penalty: str = "0.3333333", general_feedback: str = "") -> str:
     """Fields present on every question type regardless of qtype -- confirmed live:
@@ -419,12 +437,12 @@ class MultipleChoiceQuestion:
     def to_xml(self) -> str:
         base = _base_question_fields(self.name, self.questiontext)
         answers = [f'  <answer fraction="100" format="html">\n'
-                   f'    <text>{_cdata(self.correct)}</text>\n'
+                   f'{_plain_text(self.correct, indent="    ")}\n'
                    f'{_text_block("feedback", self.correct_feedback_text, indent="    ")}\n'
                    f'  </answer>']
         for opt in self.incorrect:
             answers.append(f'  <answer fraction="0" format="html">\n'
-                            f'    <text>{_cdata(opt)}</text>\n'
+                            f'{_plain_text(opt, indent="    ")}\n'
                             f'{_text_block("feedback", self.incorrect_feedback_text, indent="    ")}\n'
                             f'  </answer>')
         answers_xml = "\n".join(answers)
@@ -467,11 +485,11 @@ class TrueFalseQuestion:
             f'<question type="truefalse">\n'
             f'{base}\n'
             f'  <answer fraction="{true_fraction}" format="html">\n'
-            f'    <text>{_cdata("true")}</text>\n'
+            f'{_plain_text("true", indent="    ")}\n'
             f'{_text_block("feedback", true_feedback, indent="    ")}\n'
             f'  </answer>\n'
             f'  <answer fraction="{false_fraction}" format="html">\n'
-            f'    <text>{_cdata("false")}</text>\n'
+            f'{_plain_text("false", indent="    ")}\n'
             f'{_text_block("feedback", false_feedback, indent="    ")}\n'
             f'  </answer>\n'
             f'</question>'
@@ -599,7 +617,7 @@ class NumericalQuestion:
             f'<question type="numerical">\n'
             f'{base}\n'
             f'  <answer fraction="100" format="html">\n'
-            f'    <text>{_cdata(str(self.answer))}</text>\n'
+            f'{_plain_text(str(self.answer), indent="    ")}\n'
             f'{_text_block("feedback", self.correct_feedback, indent="    ")}\n'
             f'    <tolerance>{self.tolerance}</tolerance>\n'
             f'  </answer>\n'
@@ -649,7 +667,7 @@ class ShortAnswerQuestion:
             f'{base}\n'
             f'  <usecase>{"1" if self.use_case else "0"}</usecase>\n'
             f'  <answer fraction="100" format="html">\n'
-            f'    <text>{_cdata(self.answer)}</text>\n'
+            f'{_plain_text(self.answer, indent="    ")}\n'
             f'{_text_block("feedback", self.correct_feedback, indent="    ")}\n'
             f'  </answer>\n'
             f'</question>'
@@ -771,9 +789,9 @@ class MatchingQuestion:
         for prompt, answer in self.pairs:
             subquestions.append(
                 f'  <subquestion format="html">\n'
-                f'    <text>{_cdata(prompt)}</text>\n'
+                f'{_plain_text(prompt, indent="    ")}\n'
                 f'    <answer>\n'
-                f'      <text>{_cdata(answer)}</text>\n'
+                f'{_plain_text(answer, indent="      ")}\n'
                 f'    </answer>\n'
                 f'  </subquestion>'
             )
@@ -1073,7 +1091,7 @@ class DragIntoTextQuestion:
         for text, group in self.drag_items:
             dragboxes.append(
                 f'  <dragbox>\n'
-                f'    <text>{_cdata(text)}</text>\n'
+                f'{_plain_text(text, indent="    ")}\n'
                 f'    <group>{group}</group>\n'
                 f'  </dragbox>'
             )
@@ -1112,7 +1130,7 @@ class DragOntoImageQuestion:
             drags_xml.append(
                 f'  <drag>\n'
                 f'    <no>{i}</no>\n'
-                f'    <text>{_cdata(text)}</text>\n'
+                f'{_plain_text(text, indent="    ")}\n'
                 f'    <draggroup>{draggroup}</draggroup>\n'
                 f'  </drag>'
             )
@@ -1162,7 +1180,7 @@ class DragMarkersQuestion:
             drags_xml.append(
                 f'  <drag>\n'
                 f'    <no>{i}</no>\n'
-                f'    <text>{_cdata(text)}</text>\n'
+                f'{_plain_text(text, indent="    ")}\n'
                 f'    <noofdrags>1</noofdrags>\n'
                 f'  </drag>'
             )
@@ -1295,7 +1313,7 @@ class SelectMissingWordsQuestion:
     def to_xml(self) -> str:
         base = _base_question_fields(self.name, self.questiontext_with_blanks)
         options_xml = "\n".join(
-            f'  <selectoption>\n    <text>{_cdata(text)}</text>\n    <group>{group}</group>\n  </selectoption>'
+            f'  <selectoption>\n{_plain_text(text, indent="    ")}\n    <group>{group}</group>\n  </selectoption>'
             for text, group in self.options
         )
         return (
@@ -1330,7 +1348,7 @@ class OrderingQuestion:
     def to_xml(self) -> str:
         base = _base_question_fields(self.name, self.questiontext)
         answers_xml = "\n".join(
-            f'  <answer fraction="{i}.0000000" format="html">\n    <text>{_cdata(item)}</text>\n  </answer>'
+            f'  <answer fraction="{i}.0000000" format="html">\n{_plain_text(item, indent="    ")}\n  </answer>'
             for i, item in enumerate(self.items_in_order, start=1)
         )
         return (
@@ -1440,13 +1458,13 @@ class CalculatedWildcard:
         # (which always adds format="...") is not used here.
         return (
             f'    <dataset_definition>\n'
-            f'      <status>\n        <text>{_cdata("private")}</text>\n      </status>\n'
-            f'      <name>\n        <text>{_cdata(self.name)}</text>\n      </name>\n'
+            f'      <status>\n{_plain_text("private", indent="        ")}\n      </status>\n'
+            f'      <name>\n{_plain_text(self.name, indent="        ")}\n      </name>\n'
             f'      <type>calculated</type>\n'
-            f'      <distribution>\n        <text>{_cdata("uniform")}</text>\n      </distribution>\n'
-            f'      <minimum>\n        <text>{_cdata(str(self.minimum))}</text>\n      </minimum>\n'
-            f'      <maximum>\n        <text>{_cdata(str(self.maximum))}</text>\n      </maximum>\n'
-            f'      <decimals>\n        <text>{_cdata(str(self.decimals))}</text>\n      </decimals>\n'
+            f'      <distribution>\n{_plain_text("uniform", indent="        ")}\n      </distribution>\n'
+            f'      <minimum>\n{_plain_text(str(self.minimum), indent="        ")}\n      </minimum>\n'
+            f'      <maximum>\n{_plain_text(str(self.maximum), indent="        ")}\n      </maximum>\n'
+            f'      <decimals>\n{_plain_text(str(self.decimals), indent="        ")}\n      </decimals>\n'
             f'      <itemcount>1</itemcount>\n'
             f'      <dataset_items>\n'
             f'        <dataset_item>\n'
@@ -1485,7 +1503,7 @@ class CalculatedQuestion:
             f'  <shuffleanswers>0</shuffleanswers>\n'
             f'{_combined_feedback()}\n'
             f'  <answer fraction="100" format="html">\n'
-            f'    <text>{_cdata(self.formula)}</text>\n'
+            f'{_plain_text(self.formula, indent="    ")}\n'
             f'    <tolerance>{self.tolerance}</tolerance>\n'
             f'    <tolerancetype>1</tolerancetype>\n'
             f'    <correctanswerformat>1</correctanswerformat>\n'
@@ -2334,3 +2352,18 @@ that mentions them (`MultipleChoiceQuestion.option_lengths()` in Task 2 matches
 `length_distribution.py`'s consumption contract in Task 10; `ClozeBlank`/`ClozeQuestion` in Task 5
 match `SKILL.md`'s reference in Task 13; the two naming traps — `cloze`/`matching` — are stated
 consistently in Global Constraints, Task 5, Task 4, and both reference documents in Task 12).
+
+**Post-Task-2 correction (found live during execution, not caught by the original self-review):**
+Task 2's implementer correctly caught and fixed a real bug the original plan text shared across
+every task — `_text_block("text", value, ...)` always produces an incorrect nested
+`<text format="..."><text>...</text></text>` structure regardless of context, since it names
+"text" as its own wrapping tag. This was present in the original code for every task that builds
+an `<answer>`/`<dragbox>`/`<drag>`/`<drop>`/`<selectoption>`/`<subquestion>`'s own text child
+(Tasks 2-8). Fixed by introducing a dedicated `_plain_text(text, indent="  ")` helper (added to
+Task 2, alongside the other shared helpers) and updating every other occurrence across Tasks 3-8
+to use it instead of the broken pattern — verified via `grep` that zero instances of
+`_text_block("text", ...)` remain anywhere in this plan's code. `CalculatedWildcard` in Task 8 had
+a related instance of the same underlying mistake (several `dataset_definition` child fields
+picking up an incorrect `format` attribute the verified schema doesn't have) — fixed the same way.
+This correction happened after Task 2 shipped but before Task 3 was dispatched, so no other task
+was implemented against the broken version of this pattern.
